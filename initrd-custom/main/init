@@ -224,35 +224,62 @@ setsid sh -c 'udhcpc -t 5 -s /scripts/dhcp.script'
 # get IP address
 IP_addr="`ifconfig | grep -A 2 eth0 | grep -o 'inet addr:[^ ]*' | sed 's/.*://g'`"
 
-# mount NFS as root
-mkdir -p /new_root
-nfsmount 192.168.100.1:/netboot/nfs /new_root
+# mount NFS root filesystem
+try_nfsmount() {
+	while ! nfsmount $1 $2; do
+		echo "Failed to mount $2, retrying ..."
+		sleep 2
+	done
+}
 
-# migrate system folders
-mount --move /sys  /new_root/sys    || return 1
-mount --move /proc /new_root/proc   || return 1
-mount --move /dev  /new_root/dev    || return 1
-mount -t tmpfs -o nodev,nosuid tmpfs /new_root/tmp	|| return 1
-
-# decrypt /etc and /home folder
-echo "Please enter the passphrase for mounting /etc and /home folder:"
-while ! chroot /new_root mount -t ecryptfs -o ecryptfs_key_bytes=32,ecryptfs_cipher=aes,ecryptfs_passthrough=n,ecryptfs_sig=b8ef029f66c1edab,ecryptfs_fnek_sig=b8ef029f66c1edab /etc.enc /etc; do
-	echo "Error: /etc folder mount failed, retry mount ..."
-	sleep 2
+# mount eCryptfs for VPN credentials
+mkdir -p /.enc /.dec
+try_nfsmount 192.168.101.1:/netboot/ovpn.enc /.enc
+echo "Please enter the passphrase for mounting the secure folder:"
+while ! openssl aes-256-cbc -d -md sha512 -pbkdf2 -salt -in /.enc/ovpn -out /.dec/ovpn.tar.gz; do
+	sleep 5
+	echo "Error: invalid password, please try again ..."
 done
+cd .dec
+tar -xzf ovpn.tar.gz
+cd -
+
+#while [ 1 ]; do
+#	echo "Error: /init exited? Opening debug console ..."
+#	setsid sh -c 'exec sh </dev/tty1 >/dev/tty1 2>&1'
+#done
+
 
 # find the corresponding openvpn config file in the HOME folder, otherwise unauthorize
-if [ ! -s /new_root/etc/ovpn/$IP_addr.ovpn ]; then
+if [ ! -s /.dec/$IP_addr.ovpn ]; then
 	echo "Access Denied: your device is not authorized to access this network, please contact system administrator!"
 	while [ 1 ]; do sleep 1000; done
 fi
 
 # keeps connecting to VPN until success
-chroot /new_root openvpn --config /etc/ovpn/$IP_addr.ovpn --daemon
+openvpn --config /.dec/$IP_addr.ovpn --daemon
+sleep 2
 while ! ping -c 1 -W 1 20.8.0.1; do
 	echo "Waiting for connecting to VPN server ..."
-	sleep 2
+	sleep 5
 done
+
+
+# VPN passed, proceed to mount the root folder
+mkdir -p /new_root
+
+try_nfsmount 20.8.0.1:/netboot/nfs /new_root
+for dir in var; do
+	try_nfsmount 20.8.0.1:/netboot/nfs/$dir /new_root/$dir
+done
+
+
+# migrate system folders
+mount --move /sys  /new_root/sys    || return 1
+mount --move /proc /new_root/proc   || return 1
+mount --move /dev  /new_root/dev    || return 1
+mount --move /run  /new_root/run    || return 1
+mount -t tmpfs -o nodev,nosuid tmpfs /new_root/tmp	|| return 1
 
 # continue boot into OS
 exec switch_root /new_root /sbin/init || return 1

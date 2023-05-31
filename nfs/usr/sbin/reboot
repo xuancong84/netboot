@@ -1,0 +1,3 @@
+#!/bin/sh
+
+halt -f -f --reboot
