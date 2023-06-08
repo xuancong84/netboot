@@ -66,5 +66,7 @@ iptables -A FORWARD -i wlan0 -o tun1 -m state --state RELATED,ESTABLISHED -j ACC
 [For security]<br/>
 6. SSH server must not listen on VPN tunnel (20.8.0.\*) and access node interface (192.168.101.\*), change `ListenAddress 0.0.0.0` in `/etc/ssh/sshd\_config`
 
-
+## Troubleshoot
+- If GDM desktop environment failed ot launch, you see a black screen, then probably you have transferred the account over by copying `/etc/passwd` over. You cannot do this because all other packages' users id might be different. You have to manually transfer all actual users in `passwd`, `shadow`, and `groups` in `/etc`.
+- If any particular user cannot enter desktop after successful login, but instead goes back to the login page, maybe that user's home folder has not been created yet.
 
