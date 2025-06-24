@@ -19,11 +19,13 @@ Note: for git repo
 - Copy out the Linux kernel file /boot/vmlinuz-\* and /boot/initrd.gz(.img) into /netboot/tftpboot/ and modify /netboot/tftpboot/grub/grub.cfg accordingly.
 - Extract initrd (initial root directory) to /initrd-custom using `unmkinitramfs`, modify /initrd-custom/main/init, starting from mounting root directory.
 - During early-stage boot, the system uses busybox for all shell commands. However, busybox-mount does not support NFS properly, so we need to copy nfsmount manually into the /usr/bin folder
+- If OpenVPN is used, .ovpn credentials are compressed using `tar/gzip`, encrypted using openssl, stored in `/netboot/ovpn.enc`, and shared over NFS; you can do this by putting access node .ovpn profiles in the `./ovpn.dec/` folder and run `./encrypt-ovpn.sh`; you can add/remove/change OpenVPN configurations by cd into `./openvpn-ecc` and run `./openvpn-install.sh`. Then, you also need to copy `openvpn` and `openssl` binaries together with their dependency .so files into `initrd-custom`.
 - Rebuild initrd, `./mkinitrd.sh initrd-custom tftpboot/initrd.gz && chmod -R 755 tftpboot/`
 - Change grub password, run `grub-mkpasswd-pbkdf2`, paste the password hash into tftpboot/grub/grub.cfg , this defends against kernel option hack
-- Although root directory is shared via NFS as read-only, /var and /home must be shared as read-write (or you cannot enter desktop environment), and same for /etc (if you need to allow change of password, but will expose some vulnerability)
+- Although root directory is shared via NFS as read-only, /var and /home must be shared as read-write (or you cannot enter desktop environment), and same for /etc (if you need to allow users to change password, but will expose some vulnerability)
+- Copy over `/lib/firmware` and `lib/modules` from Live image's squashfs (you need to find the squashfs image on the ISO and mount it) to `./nfs` root file-system. Usually, the firmwares/drivers for the Live system should be enough for running the PXE terminal.
 Optional:
-- If OpenVPN is used, .ovpn credentials are compressed using `tar/gzip`, encrypted using openssl, stored in `/netboot/ovpn.enc`, and shared over NFS; you can do this by putting access node .ovpn profiles in the `./ovpn.dec/` folder and run `./encrypt-ovpn.sh`; you can add/remove/change OpenVPN configurations by cd into `./openvpn-ecc` and run `./openvpn-install.sh`.
+- delete `lib/modules/6.1.0-17-amd64/kernel/drivers/ata`, `lib/modules/6.1.0-17-amd64/kernel/drivers/scsi`, and `lib/modules/6.1.0-17-amd64/kernel/drivers/usb/storage` from both `./initrd-custom` and `./nfs` to prevent mounting local internal/external harddisks from the client terminal side, for better security.
 - eCryptfs is no longer used because when the underlying encrypted data is changed by another access node, the decrypted files on this access node does not change correspondingly, thus, files are not synchronized across all access nodes
 
 ## B. How to Launch
@@ -68,6 +70,7 @@ iptables -A FORWARD -i wlan0 -o tun1 -m state --state RELATED,ESTABLISHED -j ACC
 
 ## Troubleshoot
 - If GDM desktop environment failed ot launch, you see a black screen, then probably you have transferred the account over by copying `/etc/passwd` over. You cannot do this because all other packages' users id might be different. You have to manually transfer all actual users in `passwd`, `shadow`, and `groups` in `/etc`.
+- If GDM desktop environment stucks at login screen with frozen mouse, keyboard, and shutdown button, you might be missing firmware/drivers. So try to copy `/lib/firmware` and `lib/modules` folder from live image into `./nfs/lib/`.
 - If any particular user cannot enter desktop after successful login, but instead goes back to the login page, maybe that user's home folder has not been created yet.
 - The access node cannot wake up after screen turn off after long period of inactivity. The access node must never enter sleep/suspend (you can disable by `systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target`) because the system will unmount and remount NFS due to network connectivity change. This is not possible because umounting NFS will lose root directory so the machine will hang.
 
