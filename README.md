@@ -33,9 +33,9 @@ Optional:
 - /netboot/nfs hosts the root directory of the PXE access nodes
 - To setup NFS: /etc/exports should contain the following line, an example is in ./etc/exports
 ```
-/netboot/ovpn.enc  *(rw,sync,no_wdelay,insecure_locks,no_root_squash,insecure,no_subtree_check)
-/netboot/nfs  20.8.0.*(ro,sync,no_wdelay,insecure_locks,no_root_squash,insecure,no_subtree_check)
-/netboot/nfs/var  20.8.0.*(rw,sync,no_wdelay,insecure_locks,no_root_squash,insecure,no_subtree_check)
+/netboot/nfs/ro/ovpn.enc  *(ro,sync,no_wdelay,insecure_locks,no_root_squash,insecure,no_subtree_check)
+/netboot/nfs/ro/rootfs  20.8.0.*(ro,sync,no_wdelay,insecure_locks,no_root_squash,insecure,no_subtree_check)
+/netboot/nfs/rw/var  20.8.0.*(rw,sync,no_wdelay,insecure_locks,no_root_squash,insecure,no_subtree_check)
 ```
 - Then run `exportfs -a` and restart NFS kernel server service, `service nfs-kernel-server restart`
 
@@ -43,9 +43,9 @@ Optional:
 By default, OpenVPN server looks at configurations in the `/etc/openvpn/server` folder, you can change it via `--cd` option, a sample `/etc/openvpn/server` folder is prepared in the `./etc/openvpn/server` folder.
 
 4. If firewall is present, need to open the following ports:
-- DHCP: 67
-- TFTP: 69
-- NFS: 111 & 2049 & 2050
+- DHCP: 67/udp
+- TFTP: 69/udp
+- NFS: 2049/tcp
 - OpenVPN: 1194
 modify /etc/default/nfs-kernel-server, add `-p 2050` to RPCMOUNTDOPTS
 
@@ -69,4 +69,5 @@ iptables -A FORWARD -i wlan0 -o tun1 -m state --state RELATED,ESTABLISHED -j ACC
 ## Troubleshoot
 - If GDM desktop environment failed ot launch, you see a black screen, then probably you have transferred the account over by copying `/etc/passwd` over. You cannot do this because all other packages' users id might be different. You have to manually transfer all actual users in `passwd`, `shadow`, and `groups` in `/etc`.
 - If any particular user cannot enter desktop after successful login, but instead goes back to the login page, maybe that user's home folder has not been created yet.
+- The access node cannot wake up after screen turn off after long period of inactivity. The access node must never enter sleep/suspend (you can disable by `systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target`) because the system will unmount and remount NFS due to network connectivity change. This is not possible because umounting NFS will lose root directory so the machine will hang.
 

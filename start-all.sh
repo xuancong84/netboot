@@ -1,10 +1,11 @@
 #!/bin/bash
 
 session_name=netboot
-cmds=("top"
+cmds=(
+"ifconfig eth0 down;ifconfig eth0 192.168.101.1 netmask 255.255.255.0 broadcast 192.168.101.255 up"
 "dnsmasq -d -q -k --enable-dbus --user=dnsmasq -C dnsmasq.conf --pid-file"
 "openvpn --cd etc/openvpn/server/ --config server.conf"
-"# command-line 3"
+"systemctl restart nfs-kernel-server;systemctl status nfs-kernel-server"
 )
 
 if [ "`tmux ls | grep $session_name`" ]; then
