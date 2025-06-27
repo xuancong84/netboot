@@ -20,7 +20,7 @@ Note: for git repo
 - Extract initrd (initial root directory) to /initrd-custom using `unmkinitramfs`, modify /initrd-custom/main/init, starting from mounting root directory.
 - During early-stage boot, the system uses busybox for all shell commands. However, busybox-mount does not support NFS properly, so we need to copy nfsmount manually into the /usr/bin folder
 - If OpenVPN is used, .ovpn credentials are compressed using `tar/gzip`, encrypted using openssl, stored in `/netboot/ovpn.enc`, and shared over NFS; you can do this by putting access node .ovpn profiles in the `./ovpn.dec/` folder and run `./encrypt-ovpn.sh`; you can add/remove/change OpenVPN configurations by cd into `./openvpn-ecc` and run `./openvpn-install.sh`. Then, you also need to copy `openvpn` and `openssl` binaries together with their dependency .so files into `initrd-custom`.
-- Rebuild initrd, `./mkinitrd.sh initrd-custom tftpboot/initrd.gz && chmod -R 755 tftpboot/`
+- Rebuild initrd, `./mkinitrd.sh initrd-custom tftpboot/initrd.gz xz && chmod -R 755 tftpboot/`
 - Change grub password, run `grub-mkpasswd-pbkdf2`, paste the password hash into tftpboot/grub/grub.cfg , this defends against kernel option hack
 - Although root directory is shared via NFS as read-only, /var and /home must be shared as read-write (or you cannot enter desktop environment), and same for /etc (if you need to allow users to change password, but will expose some vulnerability)
 - Copy over `/lib/firmware` and `lib/modules` from Live image's squashfs (you need to find the squashfs image on the ISO and mount it) to `./nfs` root file-system. Usually, the firmwares/drivers for the Live system should be enough for running the PXE terminal.
@@ -49,7 +49,6 @@ By default, OpenVPN server looks at configurations in the `/etc/openvpn/server` 
 - TFTP: 69/udp
 - NFS: 2049/tcp
 - OpenVPN: 1194
-modify /etc/default/nfs-kernel-server, add `-p 2050` to RPCMOUNTDOPTS
 
 5. VPN server need to forward port to specific IP:port and block all the rest:
 ```
