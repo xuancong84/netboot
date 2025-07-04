@@ -72,4 +72,4 @@ iptables -A FORWARD -i wlan0 -o tun1 -m state --state RELATED,ESTABLISHED -j ACC
 - If GDM desktop environment stucks at login screen with frozen mouse, keyboard, and shutdown button, you might be missing firmware/drivers. So try to copy `/lib/firmware` and `lib/modules` folder from live image into `./nfs/lib/`.
 - If any particular user cannot enter desktop after successful login, but instead goes back to the login page, maybe that user's home folder has not been created yet.
 - The access node cannot wake up after screen turn off after long period of inactivity. The access node must never enter sleep/suspend (you can disable by `systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target`) because the system will unmount and remount NFS due to network connectivity change. This is not possible because umounting NFS will lose root directory so the machine will hang.
-
+- For developers: after archiving and extraction, the package no longer works. You must add `--numeric-owner` option when running `tar`.
