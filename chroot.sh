@@ -10,7 +10,7 @@ safe_umount() {
 cd "`dirname $0`"
 
 for p in sys proc dev tmp; do
-	if ! mountpoint nfs/ro/rootfs/$p; then
+	if ! mountpoint nfs/ro/rootfs/$p 2>&1 >/dev/null; then
 		mount -v --bind /$p nfs/ro/rootfs/$p
 	fi
 done
