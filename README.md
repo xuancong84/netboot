@@ -27,6 +27,7 @@ Note: for git repo
 Optional:
 - delete `lib/modules/6.1.0-17-amd64/kernel/drivers/ata`, `lib/modules/6.1.0-17-amd64/kernel/drivers/scsi`, and `lib/modules/6.1.0-17-amd64/kernel/drivers/usb/storage` from both `./initrd-custom` and `./nfs` to prevent mounting local internal/external harddisks from the client terminal side, for better security.
 - eCryptfs is no longer used because when the underlying encrypted data is changed by another access node, the decrypted files on this access node does not change correspondingly, thus, files are not synchronized across all access nodes
+- copy over ./patch to rootfs to change ctrl-alt-del reboot/poweroff behaviour; since root folder is NFS mounted, access nodes cannot follow the standard reboot/poweroff sequence.
 
 ## B. How to Launch
 0. make sure your network interface `eth0` is up and will be used for PXE network booting, or you need to modify `dnsmasq.conf`
@@ -67,9 +68,17 @@ iptables -A FORWARD -i wlan0 -o tun1 -m state --state RELATED,ESTABLISHED -j ACC
 [For security]<br/>
 6. SSH server must not listen on VPN tunnel (20.8.0.\*) and access node interface (192.168.101.\*), change `ListenAddress 0.0.0.0` in `/etc/ssh/sshd\_config`
 
+
+
 ## Troubleshoot
-- If GDM desktop environment failed ot launch, you see a black screen, then probably you have transferred the account over by copying `/etc/passwd` over. You cannot do this because all other packages' users id might be different. You have to manually transfer all actual users in `passwd`, `shadow`, and `groups` in `/etc`.
+- If GDM desktop environment failed at launch, you see a black screen, then probably you have transferred the account over by copying `/etc/passwd` over. You cannot do this because all other packages' users id might be different. You have to manually transfer all actual users in `passwd`, `shadow`, and `groups` in `/etc`.
 - If GDM desktop environment stucks at login screen with frozen mouse, keyboard, and shutdown button, you might be missing firmware/drivers. So try to copy `/lib/firmware` and `lib/modules` folder from live image into `./nfs/lib/`.
 - If any particular user cannot enter desktop after successful login, but instead goes back to the login page, maybe that user's home folder has not been created yet.
-- The access node cannot wake up after screen turn off after long period of inactivity. The access node must never enter sleep/suspend (you can disable by `systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target`) because the system will unmount and remount NFS due to network connectivity change. This is not possible because umounting NFS will lose root directory so the machine will hang.
+- The access node cannot wake up after screen turn off after long period of inactivity. The access node must never enter sleep/suspend (you can disable by `systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target`) because the system will unmount and remount NFS due to network connectivity change. This is not possible because umounting NFS will lose root directory, so the machine will hang.
+
 - For developers: after archiving and extraction, the package no longer works. You must add `--numeric-owner` option when running `tar`.
+- To enable journald logging for troubleshoot, in PXE TTY console, run /root/debug.sh
+- /etc/gdm3/PreSession/Default is modified to pre-create /tmp/$USER/.local and /tmp/$USER/.cache and link to $HOME/.local and $HOME/.cache; this minimizes NFS traffic
+- /etc/systemd/sleep.conf.d/10-disable-sleep.conf
+- /etc/systemd/logind.conf.d/10-disable-sleep.conf
+- /usr/local/bin/enforce-idle-lock.sh /etc/systemd/system/enforce-idle-lock.service: VNCviewer fullscreen interferes with idle screen lock, this enforces it
