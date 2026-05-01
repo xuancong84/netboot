@@ -6,28 +6,30 @@ if [ "`tmux ls | grep $session_name`" ]; then
 	exit 1
 fi
 
-ifaces=(`ls /sys/class/net | grep ^e`)
-
-if [ ${#ifaces[@]} == 0 ]; then
-	echo "No interfaces found for hosting PXE"
-	exit
-elif [ ${#ifaces[@]} -gt 1 ]; then
-	echo "More than 1 interfaces found: ${ifaces[@]}"
-	echo "Which one do you want to use for hosting PXE?"
-	read iface
-	while [ ! "`echo ${ifaces[@]} | grep $iface`" ]; do
-		echo "Must choose from ${ifaces[@]}"
+# Determine the net interface to bind
+iface="$1"
+if [ ! "$iface" ]; then
+	ifaces=(`ls /sys/class/net | grep ^e`)
+	if [ ${#ifaces[@]} == 0 ]; then
+		echo "No interfaces found for hosting PXE"
+		exit
+	elif [ ${#ifaces[@]} -gt 1 ]; then
+		echo "More than 1 interfaces found: ${ifaces[@]}"
+		echo "Which one do you want to use for hosting PXE?"
 		read iface
-	done
-else
-	iface=${ifaces[0]}
+		while [ ! "`echo ${ifaces[@]} | grep $iface`" ]; do
+			echo "Must choose from ${ifaces[@]}"
+			read iface
+		done
+	else
+		iface=${ifaces[0]}
+	fi
 fi
-
 
 cmds=(
 "ifconfig $iface down;ifconfig $iface 192.168.101.1 netmask 255.255.255.0 broadcast 192.168.101.255 up"
-"while [ 1 ]; do date -Is | nc -q 1 -l 192.168.101.1 9001; done"
-"sed "s:eth0:$iface:g" dnsmasq.conf>_dnsmasq.conf ; dnsmasq -d -q -k --enable-dbus --user=dnsmasq -C _dnsmasq.conf --pid-file"
+"while [ 1 ]; do date -Is | nc -w 1 -l 192.168.101.1 9001; date; done"
+"sed 's:eth0:$iface:g' dnsmasq.conf>_dnsmasq.conf ; dnsmasq -d -q -k --enable-dbus --user=dnsmasq -C _dnsmasq.conf --pid-file"
 "openvpn --cd etc/openvpn/server/ --config server.conf"
 "systemctl restart nfs-kernel-server;systemctl status nfs-kernel-server"
 )

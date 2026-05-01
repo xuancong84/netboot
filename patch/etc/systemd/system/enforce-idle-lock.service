@@ -1,0 +1,14 @@
+[Unit]
+Description=Enforce GUI idle lock using GNOME Mutter IdleMonitor
+After=display-manager.service systemd-logind.service
+Wants=systemd-logind.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/enforce-idle-lock.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

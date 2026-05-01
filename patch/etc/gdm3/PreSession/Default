@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# Note that any setup should come before the sessreg command as
+# that must be 'exec'ed for the pid to be correct (sessreg uses the parent
+# pid)
+#
+# Note that output goes into the .xsession-errors file for easy debugging
+#
+PATH="/usr/bin:$PATH"
+LOGIN_USER="${USER:-${USERNAME:-${LOGNAME:-}}}"
+
+for d in .local .cache; do
+	if [ ! -L /home/$LOGIN_USER/$d ] || [ ! -d /tmp/$LOGIN_USER/$d ]; then
+		rm -rf /home/$LOGIN_USER/$d
+		mkdir -p /tmp/$LOGIN_USER/$d
+		ln -sf /tmp/$LOGIN_USER/$d /home/$LOGIN_USER/
+	fi
+done
+
